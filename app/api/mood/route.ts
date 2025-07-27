@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let entries;
+    let entries: any[] = [];
     try {
       entries = await mongodb.getMoodEntries(user_id, limit);
     } catch (error) {
