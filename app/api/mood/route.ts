@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
               title: insight.title || 'AI Insight',
               description: insight.description || '',
               confidence: insight.confidence || 0.8,
-              created_at: new Date().toISOString(),
               is_read: false,
             });
           }
@@ -137,7 +136,6 @@ export async function GET(request: NextRequest) {
                 title: insight.title || 'Pattern Analysis',
                 description: insight.description || '',
                 confidence: insight.confidence || 0.8,
-                created_at: new Date().toISOString(),
                 is_read: false,
               });
             }
