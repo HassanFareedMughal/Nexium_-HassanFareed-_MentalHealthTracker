@@ -20,18 +20,18 @@ export async function GET(request: NextRequest) {
 
   try {
     // Set the session using the access token
-    const { data: { user }, error } = await supabase?.auth.getUser(access_token);
+    const response = await supabase?.auth.getUser(access_token);
     
-    if (error || !user) {
-      console.error('Error getting user:', error);
+    if (!response || response.error || !response.data.user) {
+      console.error('Error getting user:', response?.error);
       return NextResponse.redirect(new URL('/?error=invalid_token', request.url));
     }
 
     // Set cookies for the session
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    const redirectResponse = NextResponse.redirect(new URL('/dashboard', request.url));
     
     // Set the access token as a cookie
-    response.cookies.set('sb-access-token', access_token, {
+    redirectResponse.cookies.set('sb-access-token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (refresh_token) {
-      response.cookies.set('sb-refresh-token', refresh_token, {
+      redirectResponse.cookies.set('sb-refresh-token', refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return response;
+    return redirectResponse;
   } catch (error) {
     console.error('Error in auth callback:', error);
     return NextResponse.redirect(new URL('/?error=callback_failed', request.url));
