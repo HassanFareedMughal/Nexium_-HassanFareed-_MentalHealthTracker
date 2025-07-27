@@ -5,10 +5,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
 export const auth = supabase?.auth;
 
+// Database helper functions
 export const db = {
-  // Mood Entries
+  // Mood entries
   async createMoodEntry(entry: Omit<MoodEntry, 'id' | 'created_at' | 'updated_at'>) {
     if (!supabase) throw new Error('Supabase client not initialized');
     
