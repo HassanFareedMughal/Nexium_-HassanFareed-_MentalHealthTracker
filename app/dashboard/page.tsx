@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  BarChart3, 
   TrendingUp, 
   Activity, 
   Target, 
   Award, 
   Brain,
+  BarChart3,
   History,
-  Plus
+  Sparkles
 } from 'lucide-react';
 import MoodTracker from '@/components/MoodTracker';
 import MoodHistory from '@/components/MoodHistory';
@@ -18,7 +18,7 @@ import AIInsights from '@/components/AIInsights';
 import DashboardStats from '@/components/DashboardStats';
 
 const tabs = [
-  { id: 'track', label: 'Track Mood', icon: Plus },
+  { id: 'track', label: 'Track Mood', icon: TrendingUp },
   { id: 'history', label: 'History', icon: History },
   { id: 'insights', label: 'AI Insights', icon: Brain },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -27,7 +27,6 @@ const tabs = [
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('track');
   const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState('demo-user'); // Default user ID for demo
 
   // Mock stats for demonstration
   const stats = {
@@ -49,15 +48,10 @@ export default function DashboardPage() {
   const handleMoodSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      // Simulate API call
+      // Mock API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Mood data submitted:', data);
-      // You would typically call your API here
-      // const response = await fetch('/api/mood', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ ...data, user_id: userId })
-      // });
+      console.log('Mood submitted:', data);
+      // Here you would typically call your API
     } catch (error) {
       console.error('Error submitting mood:', error);
     } finally {
@@ -70,8 +64,21 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Mental Health Dashboard</h1>
-          <p className="text-gray-600 mt-2">Track your mood and get AI-powered insights</p>
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-bold text-gray-900"
+          >
+            Welcome back! 👋
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mt-2 text-gray-600"
+          >
+            Track your mental health journey and get AI-powered insights
+          </motion.p>
         </div>
 
         {/* Stats Cards */}
@@ -176,7 +183,7 @@ export default function DashboardPage() {
             )}
             
             {activeTab === 'insights' && (
-              <AIInsights userId={userId} />
+              <AIInsights userId="demo-user" currentMood={7} />
             )}
             
             {activeTab === 'analytics' && (
