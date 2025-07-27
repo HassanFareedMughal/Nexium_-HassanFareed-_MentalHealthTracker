@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -10,12 +11,14 @@ import {
   Brain,
   BarChart3,
   History,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 import MoodTracker from '@/components/MoodTracker';
 import MoodHistory from '@/components/MoodHistory';
 import AIInsights from '@/components/AIInsights';
 import DashboardStats from '@/components/DashboardStats';
+import { useAuth } from '@/lib/auth-context';
 
 const tabs = [
   { id: 'track', label: 'Track Mood', icon: TrendingUp },
@@ -25,8 +28,34 @@ const tabs = [
 ];
 
 export default function DashboardPage() {
+  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('track');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return null;
+  }
 
   // Mock stats for demonstration
   const stats = {
@@ -59,26 +88,54 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold text-gray-900"
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <motion.h1 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl font-bold text-gray-900"
+            >
+              Welcome back! 👋
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mt-2 text-gray-600"
+            >
+              Track your mental health journey and get AI-powered insights
+            </motion.p>
+            {user.email && (
+              <motion.p 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-1 text-sm text-gray-500"
+              >
+                Logged in as: {user.email}
+              </motion.p>
+            )}
+          </div>
+          
+          <motion.button
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            onClick={handleSignOut}
+            className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            Welcome back! 👋
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mt-2 text-gray-600"
-          >
-            Track your mental health journey and get AI-powered insights
-          </motion.p>
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </motion.button>
         </div>
 
         {/* Stats Cards */}
@@ -183,7 +240,7 @@ export default function DashboardPage() {
             )}
             
             {activeTab === 'insights' && (
-              <AIInsights userId="demo-user" currentMood={7} />
+              <AIInsights userId={user.id} currentMood={7} />
             )}
             
             {activeTab === 'analytics' && (
