@@ -63,9 +63,12 @@ export async function POST(request: NextRequest) {
           for (const insight of aiResponse.insights) {
             await mongodb.createInsight({
               user_id,
-              insight_type: insight.type || 'ai_analysis',
-              content: insight,
+              type: insight.type || 'suggestion',
+              title: insight.title || 'AI Insight',
+              description: insight.description || '',
+              confidence: insight.confidence || 0.8,
               created_at: new Date().toISOString(),
+              is_read: false,
             });
           }
         } catch (error) {
@@ -130,9 +133,12 @@ export async function GET(request: NextRequest) {
             for (const insight of patternAnalysis.insights) {
               await mongodb.createInsight({
                 user_id,
-                insight_type: 'pattern_analysis',
-                content: insight,
+                type: insight.type || 'pattern',
+                title: insight.title || 'Pattern Analysis',
+                description: insight.description || '',
+                confidence: insight.confidence || 0.8,
                 created_at: new Date().toISOString(),
+                is_read: false,
               });
             }
           } catch (error) {
