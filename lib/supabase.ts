@@ -5,12 +5,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
-
 export const auth = supabase?.auth;
 
-// Database helper functions
 export const db = {
-  // Mood entries
+  // Mood Entries
   async createMoodEntry(entry: Omit<MoodEntry, 'id' | 'created_at' | 'updated_at'>) {
     if (!supabase) throw new Error('Supabase client not initialized');
     
@@ -25,6 +23,8 @@ export const db = {
   },
 
   async getMoodEntries(userId: string, limit = 50) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { data, error } = await supabase
       .from('mood_entries')
       .select('*')
@@ -37,6 +37,8 @@ export const db = {
   },
 
   async updateMoodEntry(id: string, updates: Partial<MoodEntry>) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { data, error } = await supabase
       .from('mood_entries')
       .update(updates)
@@ -49,6 +51,8 @@ export const db = {
   },
 
   async deleteMoodEntry(id: string) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { error } = await supabase
       .from('mood_entries')
       .delete()
@@ -59,6 +63,8 @@ export const db = {
 
   // AI Insights
   async createInsight(insight: Omit<AIInsight, 'id' | 'created_at'>) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { data, error } = await supabase
       .from('ai_insights')
       .insert([insight])
@@ -70,6 +76,8 @@ export const db = {
   },
 
   async getInsights(userId: string, limit = 20) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { data, error } = await supabase
       .from('ai_insights')
       .select('*')
@@ -82,6 +90,8 @@ export const db = {
   },
 
   async markInsightAsRead(id: string) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { error } = await supabase
       .from('ai_insights')
       .update({ is_read: true })
@@ -92,6 +102,8 @@ export const db = {
 
   // User preferences
   async getUserPreferences(userId: string) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { data, error } = await supabase
       .from('user_preferences')
       .select('*')
@@ -103,6 +115,8 @@ export const db = {
   },
 
   async updateUserPreferences(userId: string, preferences: any) {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
     const { data, error } = await supabase
       .from('user_preferences')
       .upsert({ user_id: userId, ...preferences })
