@@ -1,0 +1,194 @@
+{
+  "name": "Mental Health AI Insights",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mental-health-ai",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "mental-health-ai-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract mood data from webhook\nconst moodData = $input.first().json;\n\n// Validate required fields\nif (!moodData.mood_level || !moodData.user_id) {\n  throw new Error('Missing required fields: mood_level or user_id');\n}\n\n// Prepare data for AI analysis\nconst analysisData = {\n  mood_level: moodData.mood_level,\n  energy_level: moodData.energy_level || 5,\n  sleep_hours: moodData.sleep_hours || 7,\n  stress_level: moodData.stress_level || 5,\n  activities: moodData.activities || [],\n  notes: moodData.notes || '',\n  user_id: moodData.user_id,\n  timestamp: new Date().toISOString()\n};\n\n// Add context if available\nif (moodData.recent_entries) {\n  analysisData.recent_trends = moodData.recent_entries.slice(0, 7);\n}\n\nreturn [{\n  json: analysisData\n}];"
+      },
+      "id": "data-processor",
+      "name": "Data Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "apiKey",
+        "resource": "chat",
+        "prompt": "You are an AI mental health assistant. Analyze the following mood data and provide personalized insights and recommendations.\n\nMood Data:\n- Current Mood Level: {{ $json.mood_level }}/10\n- Energy Level: {{ $json.energy_level }}/10\n- Sleep Hours: {{ $json.sleep_hours }} hours\n- Stress Level: {{ $json.stress_level }}/10\n- Activities: {{ $json.activities.join(', ') }}\n- Notes: {{ $json.notes }}\n\nRecent Trends: {{ $json.recent_trends ? $json.recent_trends.length + ' entries' : 'No recent data' }}\n\nPlease provide:\n1. **Mood Analysis**: What this mood level indicates\n2. **Pattern Recognition**: Any patterns in recent data\n3. **Personalized Recommendations**: 3-5 actionable suggestions\n4. **Positive Reinforcement**: Encouraging message\n5. **Coping Strategies**: If mood is low, suggest specific coping techniques\n\nKeep responses warm, supportive, and actionable. Focus on mental health best practices."
+      },
+      "id": "openai-analysis",
+      "name": "AI Analysis",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process AI response and create structured insights\nconst aiResponse = $input.first().json;\nconst originalData = $('Data Processor').first().json;\n\n// Extract insights from AI response\nconst insights = {\n  user_id: originalData.user_id,\n  timestamp: originalData.timestamp,\n  mood_level: originalData.mood_level,\n  ai_response: aiResponse,\n  insights: {\n    mood_analysis: '',\n    patterns: '',\n    recommendations: [],\n    positive_message: '',\n    coping_strategies: []\n  },\n  type: 'ai_insight'\n};\n\n// Parse AI response to extract structured data\nconst responseText = aiResponse.choices[0].message.content;\n\n// Extract sections (this is a simplified parser)\nconst sections = responseText.split('\\n\\n');\n\nsections.forEach(section => {\n  if (section.includes('Mood Analysis:')) {\n    insights.insights.mood_analysis = section.replace('**Mood Analysis:**', '').trim();\n  } else if (section.includes('Pattern Recognition:')) {\n    insights.insights.patterns = section.replace('**Pattern Recognition:**', '').trim();\n  } else if (section.includes('Personalized Recommendations:')) {\n    const recs = section.replace('**Personalized Recommendations:**', '').trim();\n    insights.insights.recommendations = recs.split('\\n').filter(r => r.trim().startsWith('-')).map(r => r.replace('-', '').trim());\n  } else if (section.includes('Positive Reinforcement:')) {\n    insights.insights.positive_message = section.replace('**Positive Reinforcement:**', '').trim();\n  } else if (section.includes('Coping Strategies:')) {\n    const strategies = section.replace('**Coping Strategies:**', '').trim();\n    insights.insights.coping_strategies = strategies.split('\\n').filter(s => s.trim().startsWith('-')).map(s => s.replace('-', '').trim());\n  }\n});\n\nreturn [{\n  json: insights\n}];"
+      },
+      "id": "insight-processor",
+      "name": "Insight Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"insights\": {{ $json }},\n  \"message\": \"AI insights generated successfully\",\n  \"timestamp\": \"{{ $now }}\"\n}",
+        "options": {}
+      },
+      "id": "response-webhook",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "mood-level-check",
+              "leftValue": "={{ $json.mood_level }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "low-mood-check",
+      "name": "Low Mood Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "authentication": "apiKey",
+        "resource": "chat",
+        "prompt": "The user is experiencing a low mood ({{ $json.mood_level }}/10). Provide immediate, gentle, and supportive coping strategies. Focus on:\n\n1. **Immediate Relief**: Quick techniques for right now\n2. **Self-Care Activities**: Simple, accessible activities\n3. **Professional Support**: When to seek help\n4. **Emergency Resources**: Crisis hotlines if needed\n\nKeep the tone warm, non-judgmental, and actionable. Include specific breathing exercises, grounding techniques, and self-compassion practices."
+      },
+      "id": "crisis-support",
+      "name": "Crisis Support",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [900, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Processor": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Low Mood Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Insight Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insight Processor": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Low Mood Check": {
+      "main": [
+        [
+          {
+            "node": "Crisis Support",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Crisis Support": {
+      "main": [
+        [
+          {
+            "node": "Insight Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "mental-health",
+      "name": "mental-health"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+} 

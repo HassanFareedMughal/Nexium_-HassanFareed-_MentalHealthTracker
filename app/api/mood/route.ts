@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mongodb } from '@/lib/mongodb';
-import { n8n } from '@/lib/n8n';
+import { requestAIInsights, requestQuickRecommendations, analyzeMoodPatterns } from '@/lib/n8n';
+import { MoodEntry } from '@/types';
 
 // Fallback for when MongoDB is not configured
 const createMoodEntry = async (entry: any) => {
@@ -21,11 +22,11 @@ const createMoodEntry = async (entry: any) => {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, mood, energy_level, sleep_hours, stress_level, activities, notes } = body;
+    const { user_id, mood_level, energy_level, sleep_hours, stress_level, activities, notes } = body;
 
-    if (!user_id || !mood) {
+    if (!user_id || mood_level === undefined) {
       return NextResponse.json(
-        { error: 'User ID and mood are required' },
+        { error: 'user_id and mood_level are required' },
         { status: 400 }
       );
     }
@@ -33,52 +34,66 @@ export async function POST(request: NextRequest) {
     // Create mood entry
     const moodEntry = await createMoodEntry({
       user_id,
-      mood,
-      energy_level,
-      sleep_hours,
-      stress_level,
-      activities,
-      notes,
+      mood_level,
+      energy_level: energy_level || 5,
+      sleep_hours: sleep_hours || 7,
+      stress_level: stress_level || 5,
+      activities: activities || [],
+      notes: notes || '',
     });
 
     // Request AI insights from n8n (optional)
     try {
-      const insights = await n8n.analyzeMoodPattern(user_id, {
-        mood,
-        energy_level,
-        sleep_hours,
-        stress_level,
-        activities,
-        notes,
+      const aiResponse = await requestAIInsights({
+        user_id,
+        mood_data: {
+          mood: mood_level,
+          energy_level: energy_level || 5,
+          sleep_hours: sleep_hours || 7,
+          stress_level: stress_level || 5,
+          activities: activities || [],
+          notes: notes || '',
+        },
+        insights_requested: true,
       });
 
-      // Save insights to database
-      for (const insight of insights) {
+      // Save insights to database if successful
+      if (aiResponse.success && aiResponse.insights) {
         try {
-          await mongodb.createInsight({
-            user_id,
-            type: insight.type,
-            title: insight.title,
-            description: insight.description,
-            confidence: insight.confidence,
-            is_read: false,
-          });
+          for (const insight of aiResponse.insights) {
+            await mongodb.createInsight({
+              user_id,
+              insight_type: insight.type || 'ai_analysis',
+              content: insight,
+              created_at: new Date().toISOString(),
+            });
+          }
         } catch (error) {
-          console.log('Could not save insight to database');
+          console.log('Could not save insights to database');
         }
       }
+
+      return NextResponse.json({
+        success: true,
+        mood_entry: moodEntry,
+        ai_insights: aiResponse.insights || [],
+        recommendations: aiResponse.recommendations || [],
+        ai_success: aiResponse.success,
+      });
     } catch (error) {
       console.log('AI insights not available');
+      return NextResponse.json({
+        success: true,
+        mood_entry: moodEntry,
+        ai_insights: [],
+        recommendations: [],
+        ai_success: false,
+      });
     }
-
-    return NextResponse.json(
-      { message: 'Mood entry created successfully', data: moodEntry },
-      { status: 201 }
-    );
   } catch (error) {
-    console.error('Mood entry API error:', error);
+    console.error('Error creating mood entry:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create mood entry' },
       { status: 500 }
     );
   }
@@ -92,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     if (!user_id) {
       return NextResponse.json(
-        { error: 'User ID is required' },
+        { error: 'user_id is required' },
         { status: 400 }
       );
     }
@@ -105,14 +120,39 @@ export async function GET(request: NextRequest) {
       entries = [];
     }
 
-    return NextResponse.json(
-      { data: entries },
-      { status: 200 }
-    );
+    // Request pattern analysis if we have entries
+    let patternAnalysis = null;
+    if (entries.length > 0) {
+      try {
+        patternAnalysis = await analyzeMoodPatterns(user_id, entries);
+        if (patternAnalysis.success && patternAnalysis.insights) {
+          try {
+            for (const insight of patternAnalysis.insights) {
+              await mongodb.createInsight({
+                user_id,
+                insight_type: 'pattern_analysis',
+                content: insight,
+                created_at: new Date().toISOString(),
+              });
+            }
+          } catch (error) {
+            console.log('Could not save pattern analysis to database');
+          }
+        }
+      } catch (error) {
+        console.log('Pattern analysis not available');
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      entries,
+      pattern_analysis: patternAnalysis,
+    });
   } catch (error) {
-    console.error('Get mood entries API error:', error);
+    console.error('Error fetching mood entries:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch mood entries' },
       { status: 500 }
     );
   }
