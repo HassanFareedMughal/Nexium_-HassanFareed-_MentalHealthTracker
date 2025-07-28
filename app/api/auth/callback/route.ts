@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -7,6 +6,13 @@ export async function GET(request: NextRequest) {
   const refresh_token = searchParams.get('refresh_token');
   const error = searchParams.get('error');
   const error_description = searchParams.get('error_description');
+
+  console.log('Auth callback called with:', {
+    access_token: access_token ? 'present' : 'missing',
+    refresh_token: refresh_token ? 'present' : 'missing',
+    error,
+    error_description
+  });
 
   if (error) {
     console.error('Auth error:', error, error_description);
@@ -19,20 +25,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Set the session using the access token
-    const response = await supabase?.auth.getUser(access_token);
+    console.log('Redirecting to dashboard with token');
     
-    if (!response || response.error || !response.data.user) {
-      console.error('Error getting user:', response?.error);
-      return NextResponse.redirect(new URL('/?error=invalid_token', request.url));
-    }
-
-    // Set cookies for the session
+    // Create a redirect response to the dashboard
     const redirectResponse = NextResponse.redirect(new URL('/dashboard', request.url));
     
-    // Set the access token as a cookie
+    // Set the access token as a cookie for the client-side auth context
     redirectResponse.cookies.set('sb-access-token', access_token, {
-      httpOnly: true,
+      httpOnly: false, // Allow client-side access
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     if (refresh_token) {
       redirectResponse.cookies.set('sb-refresh-token', refresh_token, {
-        httpOnly: true,
+        httpOnly: false, // Allow client-side access
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30, // 30 days

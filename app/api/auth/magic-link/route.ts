@@ -29,11 +29,14 @@ export async function POST(request: NextRequest) {
       ? `https://${process.env.VERCEL_URL}` 
       : process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
-    // Send magic link email with redirect to auth callback
+    console.log('Sending magic link to:', email);
+    console.log('Redirect URL:', `${baseUrl}/api/debug-magic-link`);
+
+    // Send magic link email with redirect to debug route first
     const { data, error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        emailRedirectTo: `${baseUrl}/api/auth/callback`,
+        emailRedirectTo: `${baseUrl}/api/debug-magic-link`,
       },
     });
 

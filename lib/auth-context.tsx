@@ -31,11 +31,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Check for existing session
+    // Check for existing session and tokens
     const getSession = async () => {
       try {
+        // First try to get the current session
         const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          setUser(session.user);
+        } else {
+          // If no session, check for tokens in cookies
+          const accessToken = getCookie('sb-access-token');
+          if (accessToken) {
+            // Set the session with the access token
+            const { data: { user: tokenUser }, error } = await supabase.auth.getUser(accessToken);
+            if (!error && tokenUser) {
+              setUser(tokenUser);
+            }
+          }
+        }
       } catch (error) {
         console.error('Auth session error:', error);
       } finally {
@@ -59,6 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     if (supabase) {
       await supabase.auth.signOut();
+      // Clear cookies
+      document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     }
   };
 
@@ -67,6 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// Helper function to get cookie value
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
 }
 
 export const useAuth = () => useContext(AuthContext); 
