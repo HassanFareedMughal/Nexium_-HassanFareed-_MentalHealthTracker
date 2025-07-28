@@ -12,32 +12,51 @@ export async function connectToDatabase() {
     return { client: cachedClient, db: cachedDb };
   }
 
-  const client = new MongoClient(uri);
-  await client.connect();
-  
-  const db = client.db(dbName);
-  
-  cachedClient = client;
-  cachedDb = db;
-  
-  return { client, db };
+  if (!uri) {
+    console.error('MONGODB_URI is not set');
+    throw new Error('MONGODB_URI environment variable is not configured');
+  }
+
+  try {
+    console.log('Connecting to MongoDB...');
+    const client = new MongoClient(uri);
+    await client.connect();
+    
+    const db = client.db(dbName);
+    
+    cachedClient = client;
+    cachedDb = db;
+    
+    console.log('Successfully connected to MongoDB');
+    return { client, db };
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    throw error;
+  }
 }
 
 export const mongodb = {
   // Mood entries
   async createMoodEntry(entry: Omit<MoodEntry, 'id' | 'created_at' | 'updated_at'>) {
-    const { db } = await connectToDatabase();
-    const now = new Date().toISOString();
-    
-    const newEntry = {
-      ...entry,
-      id: Math.random().toString(36).substr(2, 9),
-      created_at: now,
-      updated_at: now,
-    };
-    
-    const result = await db.collection('mood_entries').insertOne(newEntry);
-    return { ...newEntry, _id: result.insertedId };
+    try {
+      const { db } = await connectToDatabase();
+      const now = new Date().toISOString();
+      
+      const newEntry = {
+        ...entry,
+        id: Math.random().toString(36).substr(2, 9),
+        created_at: now,
+        updated_at: now,
+      };
+      
+      console.log('Inserting mood entry:', newEntry);
+      const result = await db.collection('mood_entries').insertOne(newEntry);
+      console.log('Mood entry inserted with ID:', result.insertedId);
+      return { ...newEntry, _id: result.insertedId };
+    } catch (error) {
+      console.error('Error creating mood entry in MongoDB:', error);
+      throw error;
+    }
   },
 
   async getMoodEntries(userId: string, limit = 50) {

@@ -25,16 +25,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the exact Vercel URL
-    const baseUrl = 'https://mental-heath-tracker-k2pf8stuy-hassan-fareeds-projects.vercel.app';
+    const baseUrl = 'https://mental-heath-tracker-3lu5jlotu-hassan-fareeds-projects.vercel.app';
 
     console.log('Sending magic link to:', email);
-    console.log('Redirect URL:', `${baseUrl}/api/debug-magic-link`);
+    console.log('Redirect URL:', `${baseUrl}/dashboard`);
 
-    // Send magic link email with redirect to debug route first
+    // Send magic link email with redirect directly to dashboard
     const { data, error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        emailRedirectTo: `${baseUrl}/api/debug-magic-link`,
+        emailRedirectTo: `${baseUrl}/dashboard`,
       },
     });
 

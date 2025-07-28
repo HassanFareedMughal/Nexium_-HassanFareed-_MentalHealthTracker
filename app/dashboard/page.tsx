@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -19,6 +19,7 @@ import MoodHistory from '@/components/MoodHistory';
 import AIInsights from '@/components/AIInsights';
 import DashboardStats from '@/components/DashboardStats';
 import { useAuth } from '@/lib/auth-context';
+import { createClient } from '@supabase/supabase-js';
 
 const tabs = [
   { id: 'track', label: 'Track Mood', icon: TrendingUp },
@@ -30,23 +31,90 @@ const tabs = [
 export default function DashboardPage() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState('track');
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+
+  // Handle authentication tokens from URL (magic link)
+  useEffect(() => {
+    const handleAuthTokens = async () => {
+      const access_token = searchParams.get('access_token');
+      const refresh_token = searchParams.get('refresh_token');
+      const error = searchParams.get('error');
+
+      if (error) {
+        console.error('Auth error from URL:', error);
+        router.push('/?error=auth_failed');
+        return;
+      }
+
+      if (access_token && !user && !isProcessingAuth) {
+        setIsProcessingAuth(true);
+        console.log('Processing auth tokens from URL...');
+
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+          
+          if (!supabaseUrl || !supabaseAnonKey) {
+            console.error('Supabase not configured');
+            router.push('/?error=config_error');
+            return;
+          }
+
+          const supabase = createClient(supabaseUrl, supabaseAnonKey);
+          
+          // Set the session with the tokens
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token: refresh_token || '',
+          });
+
+          if (sessionError) {
+            console.error('Error setting session:', sessionError);
+            router.push('/?error=session_error');
+            return;
+          }
+
+          if (!data.user) {
+            console.error('No user found after setting session');
+            router.push('/?error=no_user');
+            return;
+          }
+
+          console.log('Session set successfully for user:', data.user.email);
+          
+          // Clear the URL parameters
+          router.replace('/dashboard');
+        } catch (error) {
+          console.error('Error processing auth tokens:', error);
+          router.push('/?error=callback_failed');
+        } finally {
+          setIsProcessingAuth(false);
+        }
+      }
+    };
+
+    handleAuthTokens();
+  }, [searchParams, user, isProcessingAuth, router]);
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isProcessingAuth) {
       router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isProcessingAuth]);
 
-  // Show loading while checking auth
-  if (loading) {
+  // Show loading while checking auth or processing tokens
+  if (loading || isProcessingAuth) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">
+            {isProcessingAuth ? 'Setting up your session...' : 'Loading...'}
+          </p>
         </div>
       </div>
     );
@@ -75,17 +143,8 @@ export default function DashboardPage() {
   };
 
   const handleMoodSubmit = async (data: any) => {
-    setIsLoading(true);
-    try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Mood submitted:', data);
-      // Here you would typically call your API
-    } catch (error) {
-      console.error('Error submitting mood:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    // This function is no longer needed since MoodTracker handles submission directly
+    return;
   };
 
   const handleSignOut = async () => {
@@ -232,7 +291,7 @@ export default function DashboardPage() {
 
           <div className="p-6">
             {activeTab === 'track' && (
-              <MoodTracker onSubmit={handleMoodSubmit} isLoading={isLoading} />
+              <MoodTracker />
             )}
             
             {activeTab === 'history' && (

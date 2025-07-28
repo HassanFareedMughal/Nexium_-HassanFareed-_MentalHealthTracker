@@ -35,18 +35,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getSession = async () => {
       try {
         // First try to get the current session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        }
         
         if (session?.user) {
+          console.log('Found existing session for user:', session.user.email);
           setUser(session.user);
         } else {
+          console.log('No existing session found');
           // If no session, check for tokens in cookies
           const accessToken = getCookie('sb-access-token');
           if (accessToken) {
+            console.log('Found access token in cookies, setting session');
             // Set the session with the access token
-            const { data: { user: tokenUser }, error } = await supabase.auth.getUser(accessToken);
-            if (!error && tokenUser) {
+            const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(accessToken);
+            if (!tokenError && tokenUser) {
+              console.log('Successfully set session from token for user:', tokenUser.email);
               setUser(tokenUser);
+            } else {
+              console.error('Error setting session from token:', tokenError);
             }
           }
         }
@@ -62,13 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   const signOut = async () => {
     if (supabase) {
