@@ -48,13 +48,17 @@ export default function MoodTracker() {
   };
 
   const handleSave = async () => {
+    console.log('=== SAVE BUTTON CLICKED ===');
     alert('Save button clicked!');
     
+    console.log('Current mood:', mood);
     if (!mood) {
+      console.log('No mood selected');
       alert('Please select a mood first');
       return;
     }
 
+    console.log('Mood selected, proceeding...');
     alert('Saving mood entry...');
 
     const moodData = {
@@ -71,14 +75,22 @@ export default function MoodTracker() {
       timestamp: new Date().toISOString(),
     };
 
+    console.log('Mood data to send:', moodData);
+
     try {
-      const response = await fetch('/api/mood', {
+      console.log('Making API call to /api/test-mood...');
+      const response = await fetch('/api/test-mood', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(moodData),
       });
 
+      console.log('API response status:', response.status);
+      const responseData = await response.json();
+      console.log('API response data:', responseData);
+
       if (response.ok) {
+        console.log('Success! Resetting form...');
         alert('✅ Mood saved successfully!');
         // Reset form
         setMood('');
@@ -88,9 +100,11 @@ export default function MoodTracker() {
         setActivities([]);
         setNotes('');
       } else {
+        console.log('API call failed');
         alert('❌ Failed to save mood');
       }
     } catch (error) {
+      console.error('Error in save function:', error);
       alert('❌ Error saving mood: ' + error);
     }
   };

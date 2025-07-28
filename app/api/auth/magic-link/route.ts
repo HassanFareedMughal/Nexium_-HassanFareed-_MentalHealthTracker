@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use the exact Vercel URL
-    const baseUrl = 'https://mental-heath-tracker-3lu5jlotu-hassan-fareeds-projects.vercel.app';
+    // Use localhost for local development
+    const baseUrl = 'http://localhost:3000';
 
     console.log('Sending magic link to:', email);
     console.log('Redirect URL:', `${baseUrl}/dashboard`);
