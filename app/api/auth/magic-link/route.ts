@@ -24,10 +24,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the base URL for the callback
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    // Use the exact Vercel URL
+    const baseUrl = 'https://mental-heath-tracker-k2pf8stuy-hassan-fareeds-projects.vercel.app';
 
     console.log('Sending magic link to:', email);
     console.log('Redirect URL:', `${baseUrl}/api/debug-magic-link`);
@@ -48,6 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('Magic link sent successfully');
     return NextResponse.json(
       { message: 'Magic link sent successfully' },
       { status: 200 }
